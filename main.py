@@ -16,7 +16,10 @@ def get_urls():
 @app.route('/<prefix>/<path:endpoint>', methods=['GET', 'POST'])
 def proxy(prefix, endpoint):
     urls = get_urls()
-    base_url = urls.get(prefix)
+    url_info = urls.get(prefix)
+    if not url_info or 'url' not in url_info:
+        return Response("Unknown prefix", status=404)
+    base_url = url_info['url']
     url = f"{base_url}/{endpoint}"
     headers = {key: value for key, value in request.headers if key != 'Host'}
     context = ssl.create_default_context(cafile=certifi.where())
