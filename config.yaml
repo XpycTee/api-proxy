@@ -1,0 +1,3 @@
+urls:
+  bybit:
+    url: 'https://api.bybit.com'

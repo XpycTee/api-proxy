@@ -3,14 +3,21 @@ import certifi
 from flask import Flask, request, Response
 import urllib.request
 import urllib.parse
+import yaml
 
 app = Flask(__name__)
 
-BYBIT_API_BASE = 'https://api.bybit.com'
 
-@app.route('/bybit/<path:endpoint>', methods=['GET', 'POST'])
-def proxy_to_bybit(endpoint):
-    url = f"{BYBIT_API_BASE}/{endpoint}"
+def get_urls():
+    with open('config.yaml', "r", encoding="utf-8") as config_file:
+        return yaml.safe_load(config_file).get('urls', {})
+
+
+@app.route('/<prefix>/<path:endpoint>', methods=['GET', 'POST'])
+def proxy(prefix, endpoint):
+    urls = get_urls()
+    base_url = urls.get(prefix)
+    url = f"{base_url}/{endpoint}"
     headers = {key: value for key, value in request.headers if key != 'Host'}
     context = ssl.create_default_context(cafile=certifi.where())
     
