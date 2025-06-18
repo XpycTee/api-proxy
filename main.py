@@ -1,3 +1,4 @@
+import json
 import ssl
 import time
 import certifi
@@ -41,17 +42,19 @@ def proxy(prefix, endpoint):
 
     url = f"{base_url}/{endpoint}"
     headers = {key: value for key, value in request.headers if key != 'Host'}
+    app.logger.debug(json.dumps(headers))
     context = ssl.create_default_context(cafile=certifi.where())
     
     try:
         if request.method == 'GET':
             full_url = url + '?' + urllib.parse.urlencode(request.args)
+            app.logger.debug(full_url)
             req = urllib.request.Request(full_url, headers=headers, method='GET')
             with urllib.request.urlopen(req, context=context) as resp:
                 content = resp.read()
                 status = resp.status
                 response_headers = [(k, v) for k, v in resp.getheaders()
-                                   if k.lower() not in ['content-encoding', 'content-length', 'transfer-encoding', 'connection']]
+                                   if k.lower() not in ['content-length', 'transfer-encoding', 'connection']]
         elif request.method == 'POST':
             data = request.get_data()
             req = urllib.request.Request(url, data=data, headers=headers, method='POST')
@@ -59,10 +62,13 @@ def proxy(prefix, endpoint):
                 content = resp.read()
                 status = resp.status
                 response_headers = [(k, v) for k, v in resp.getheaders()
-                                   if k.lower() not in ['content-encoding', 'content-length', 'transfer-encoding', 'connection']]
+                                   if k.lower() not in ['content-length', 'transfer-encoding', 'connection']]
         else:
             return Response("Метод не поддерживается", status=405)
         LAST_REQUESTS[prefix] = datetime.now()
+        app.logger.debug(content)
+        app.logger.debug(status)
+        app.logger.debug(resp.getheaders())
         return Response(content, status, response_headers)
     except Exception as e:
         return Response(f"Ошибка при обращении к API: {e}", status=500)
