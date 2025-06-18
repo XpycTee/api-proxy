@@ -1,11 +1,12 @@
-import datetime
 import ssl
 import time
 import certifi
-from flask import Flask, request, Response
 import urllib.request
 import urllib.parse
 import yaml
+
+from datetime import datetime
+from flask import Flask, request, Response
 
 app = Flask(__name__)
 
