@@ -9,9 +9,7 @@ from datetime import datetime
 from flask import Flask, request, Response
 
 app = Flask(__name__)
-
-# где-то в модуле, например, в app.config или глобальном dict:
-LAST_REQUESTS = {}
+app.config['LAST_REQUESTS'] = {}
 
 def get_urls():
     with open('config.yaml', "r", encoding="utf-8") as config_file:
@@ -20,6 +18,7 @@ def get_urls():
 
 @app.route('/<prefix>/<path:endpoint>', methods=['GET', 'POST'])
 def proxy(prefix, endpoint):
+    LAST_REQUESTS = app.config.get('LAST_REQUESTS')
     urls = get_urls()
     url_info = urls.get(prefix)
     if not url_info or 'url' not in url_info:
@@ -32,7 +31,7 @@ def proxy(prefix, endpoint):
         query_delay_sec = 60.0 / rate_limit
 
         now = datetime.now()
-        last = LAST_REQUESTS.get(prefix)
+        last = LAST_REQUESTS.get(prefix, None)
 
         if last is not None:
             elapsed = (now - last).total_seconds()
@@ -66,7 +65,7 @@ def proxy(prefix, endpoint):
         LAST_REQUESTS[prefix] = datetime.now()
         return Response(content, status, response_headers)
     except Exception as e:
-        return Response(f"Ошибка при обращении к Bybit API: {e}", status=500)
+        return Response(f"Ошибка при обращении к API: {e}", status=500)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
