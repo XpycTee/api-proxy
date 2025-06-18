@@ -1,3 +1,6 @@
 urls:
   bybit:
     url: 'https://api.bybit.com'
+  steam:
+    url: 'https://steamcommunity.com'
+    rate_limit: 10  # Queries in minute
