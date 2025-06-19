@@ -1,4 +1,3 @@
-import json
 import ssl
 import time
 import certifi
@@ -7,19 +6,23 @@ import urllib.parse
 import yaml
 
 from datetime import datetime
-from flask import Flask, request, Response
 
+from flask import Flask, request, Response
+from flask_caching import Cache
+
+cache = Cache()
 app = Flask(__name__)
-app.config['LAST_REQUESTS'] = {}
+app.config['CACHE_TYPE'] = 'MemcachedCache'
+app.config['CACHE_MEMCACHED_SERVERS'] = ['127.0.0.1:11211']
+cache.init_app(app)
 
 def get_urls():
-    with open('config.yaml', "r", encoding="utf-8") as config_file:
+    with open('config/config.yaml', "r", encoding="utf-8") as config_file:
         return yaml.safe_load(config_file).get('urls', {})
 
 
 @app.route('/<prefix>/<path:endpoint>', methods=['GET', 'POST'])
 def proxy(prefix, endpoint):
-    LAST_REQUESTS = app.config.get('LAST_REQUESTS')
     urls = get_urls()
     url_info = urls.get(prefix)
     if not url_info or 'url' not in url_info:
@@ -32,7 +35,7 @@ def proxy(prefix, endpoint):
         query_delay_sec = 60.0 / rate_limit
 
         now = datetime.now()
-        last = LAST_REQUESTS.get(prefix, None)
+        last = cache.get(f'last_{prefix}')
 
         if last is not None:
             elapsed = (now - last).total_seconds()
@@ -42,7 +45,6 @@ def proxy(prefix, endpoint):
 
     url = f"{base_url}/{endpoint}"
     headers = {key: value for key, value in request.headers if key != 'Host'}
-    app.logger.debug(json.dumps(headers))
     context = ssl.create_default_context(cafile=certifi.where())
     
     try:
@@ -65,7 +67,7 @@ def proxy(prefix, endpoint):
                                    if k.lower() not in ['content-length', 'transfer-encoding', 'connection']]
         else:
             return Response("Метод не поддерживается", status=405)
-        LAST_REQUESTS[prefix] = datetime.now()
+        cache.set(f'last_{prefix}', datetime.now(), timeout=query_delay_sec)
         app.logger.debug(content)
         app.logger.debug(status)
         app.logger.debug(resp.getheaders())
