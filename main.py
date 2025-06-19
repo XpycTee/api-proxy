@@ -42,6 +42,7 @@ def proxy(prefix, endpoint):
             wait = query_delay_sec - elapsed
             if wait > 0:
                 time.sleep(wait)
+        cache.set(f'last_{prefix}', datetime.now(), timeout=query_delay_sec)
 
     url = f"{base_url}/{endpoint}"
     headers = {key: value for key, value in request.headers if key != 'Host'}
@@ -67,7 +68,6 @@ def proxy(prefix, endpoint):
                                    if k.lower() not in ['content-length', 'transfer-encoding', 'connection']]
         else:
             return Response("Метод не поддерживается", status=405)
-        cache.set(f'last_{prefix}', datetime.now(), timeout=query_delay_sec)
         app.logger.debug(content)
         app.logger.debug(status)
         app.logger.debug(resp.getheaders())
