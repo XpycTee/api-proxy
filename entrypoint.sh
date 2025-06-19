@@ -13,4 +13,27 @@ if [ $missing -eq 1 ]; then
     pip install -r requirements.txt
 fi
 
-python main.py
+# Проверяем наличие переменной окружения SECRET_KEY
+if [ -z "$FLASK_SECRET_KEY" ]; then
+    echo "SECRET_KEY not found. Generating a new one..."
+    FLASK_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+    export FLASK_SECRET_KEY
+    echo "Generated SECRET_KEY: $FLASK_SECRET_KEY"
+fi
+
+# Устанавливаем параметры Gunicorn из переменных окружения или используем значения по умолчанию
+GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
+GUNICORN_LOG_LEVEL=${GUNICORN_LOG_LEVEL:-info}
+GUNICORN_PORT=${GUNICORN_PORT:-8080}
+GUNICORN_ADDR=${GUNICORN_BIND:-0.0.0.0}
+
+CAHCE_SIZE=${CAHCE_SIZE:-1024}
+
+memcached -d -u nobody -m $CAHCE_SIZE -l 127.0.0.1 -p 11211
+
+# Проверяем значение переменной DEBUG
+if [ "$DEBUG" = "true" ]; then
+    exec gunicorn -w "$GUNICORN_WORKERS" -b "$GUNICORN_ADDR:$GUNICORN_PORT" --reload --log-level=debug main:app
+else
+    exec gunicorn -w "$GUNICORN_WORKERS" -b "$GUNICORN_ADDR:$GUNICORN_PORT" --log-level="$GUNICORN_LOG_LEVEL" main:app
+fi
