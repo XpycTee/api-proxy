@@ -1,11 +1,10 @@
-import ssl
 import time
-import certifi
-import urllib.request
-import urllib.parse
 import yaml
 
+import httpx
+
 from datetime import datetime
+from urllib.parse import urlencode
 
 from flask import Flask, request, Response
 from flask_caching import Cache
@@ -15,6 +14,7 @@ app = Flask(__name__)
 app.config['CACHE_TYPE'] = 'MemcachedCache'
 app.config['CACHE_MEMCACHED_SERVERS'] = ['127.0.0.1:11211']
 cache.init_app(app)
+
 
 def get_urls():
     with open('config/config.yaml', "r", encoding="utf-8") as config_file:
@@ -46,31 +46,24 @@ def proxy(prefix, endpoint):
 
     url = f"{base_url}/{endpoint}"
     headers = {key: value for key, value in request.headers if key != 'Host'}
-    context = ssl.create_default_context(cafile=certifi.where())
     
     try:
-        if request.method == 'GET':
-            full_url = url + '?' + urllib.parse.urlencode(request.args)
-            app.logger.debug(full_url)
-            req = urllib.request.Request(full_url, headers=headers, method='GET')
-            with urllib.request.urlopen(req, context=context) as resp:
-                content = resp.read()
-                status = resp.status
-                response_headers = [(k, v) for k, v in resp.getheaders()
-                                   if k.lower() not in ['content-length', 'transfer-encoding', 'connection']]
-        elif request.method == 'POST':
-            data = request.get_data()
-            req = urllib.request.Request(url, data=data, headers=headers, method='POST')
-            with urllib.request.urlopen(req, context=context) as resp:
-                content = resp.read()
-                status = resp.status
-                response_headers = [(k, v) for k, v in resp.getheaders()
-                                   if k.lower() not in ['content-length', 'transfer-encoding', 'connection']]
-        else:
-            return Response("Метод не поддерживается", status=405)
+        with httpx.Client(headers=headers) as client:
+            if request.method == 'GET':
+                response = client.get(url, params=request.args)
+            elif request.method == 'POST':
+                data = request.get_data()
+                response = client.post(url, data=data)
+            else:
+                return Response("Метод не поддерживается", status=405)
+            
+            response.raise_for_status()
+            content = response.read()
+            status = response.status_code
+            response_headers = [(k, v) for k, v in response.headers.items() if k.lower() not in ['content-length', 'transfer-encoding', 'connection']]
         app.logger.debug(content)
         app.logger.debug(status)
-        app.logger.debug(resp.getheaders())
+        app.logger.debug(response.headers)
         return Response(content, status, response_headers)
     except Exception as e:
         return Response(f"Ошибка при обращении к API: {e}", status=500)
