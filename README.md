@@ -35,8 +35,8 @@ curl 'http://127.0.0.1:8080/steam/inventory/$STEAMID/730/2?l=english&count=100'
 | Variable                   | Description                                               | Example Value                  | Default                 |
 |----------------------------|-----------------------------------------------------------|--------------------------------|-------------------------|
 | `APIPROXY_URL_*`           | `APIPROXY_URL_steam` - url for prefix `steam`             | `"https://steamcommunity.com"` | `None`                  |
-| `APIPROXY_RATE_*`          | `APIPROXY_RATE_steam` - Rate limit for prefix `steam`    | `"30"`                         | `"0"`                   |
-| `MEMCACHE_PATH`            | URL for the cache server (e.g., Memcached or Redis).      | `"/tmp/memcached.sock"`        | `"/tmp/memcached.sock"` |
+| `APIPROXY_RATE_*`          | `APIPROXY_RATE_steam` - Rate limit for prefix `steam`     | `"30"`                         | `"0"`                   |
+| `MEMCACHE_PATH`            | Path to socket for the Memcached server.                  | `"/tmp/memcached.sock"`        | `"/tmp/memcached.sock"` |
 | `CACHE_SIZE`               | Cache size in megabytes.                                  | `"1024"`                       | `"1024"`                |
 | `GUNICORN_WORKERS`         | Number of Gunicorn workers for handling requests.         | `"4"`                          | `"4"`                   |
 | `GUNICORN_LOG_LEVEL`       | Log level for Gunicorn (e.g., `debug`, `info`, `warning`).| `"info"`                       | `"info"`                |
