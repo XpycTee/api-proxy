@@ -3,4 +3,6 @@ urls:
     url: 'https://api.bybit.com'
   steam:
     url: 'https://steamcommunity.com'
-    rate_limit: 30  # Queries in minute
+    rate_limit: 30  # (Optional) Queries per minute
+  test:
+    url: 'http://localhost:81/test'
