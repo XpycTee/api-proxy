@@ -25,15 +25,19 @@ fi
 GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
 GUNICORN_LOG_LEVEL=${GUNICORN_LOG_LEVEL:-info}
 GUNICORN_PORT=${GUNICORN_PORT:-8080}
-GUNICORN_ADDR=${GUNICORN_BIND:-0.0.0.0}
+GUNICORN_ADDR=${GUNICORN_BIND:-[::]}
 
-CAHCE_SIZE=${CAHCE_SIZE:-1024}
-
-memcached -d -u nobody -m $CAHCE_SIZE -l 127.0.0.1 -p 11211
+CACHE_SIZE=${CACHE_SIZE:-1024}
+export MEMCACHE_PATH=${MEMCACHE_PATH:-"/tmp/memcached.sock"}
+if pgrep -x "memcached" > /dev/null; then
+    echo "memcached already started"
+else
+    memcached -d -u nobody -m $CACHE_SIZE $MEMCACHE_PATH
+fi
 
 # Проверяем значение переменной DEBUG
 if [ "$DEBUG" = "true" ]; then
-    exec gunicorn -w "$GUNICORN_WORKERS" -b "$GUNICORN_ADDR:$GUNICORN_PORT" --reload --log-level=debug main:app
+    exec gunicorn -w "$GUNICORN_WORKERS" -b "$GUNICORN_ADDR:$GUNICORN_PORT" --reload --log-level=debug app.proxy:app
 else
-    exec gunicorn -w "$GUNICORN_WORKERS" -b "$GUNICORN_ADDR:$GUNICORN_PORT" --log-level="$GUNICORN_LOG_LEVEL" main:app
+    exec gunicorn -w "$GUNICORN_WORKERS" -b "$GUNICORN_ADDR:$GUNICORN_PORT" --log-level="$GUNICORN_LOG_LEVEL" app.proxy:app
 fi

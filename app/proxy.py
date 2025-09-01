@@ -3,22 +3,42 @@ import yaml
 
 import httpx
 
+from os import environ
 from datetime import datetime
-from urllib.parse import urlencode
 
 from flask import Flask, request, Response
 from flask_caching import Cache
 
+from environs import Env, validate
+env = Env()
+env.read_env()
+
 cache = Cache()
 app = Flask(__name__)
 app.config['CACHE_TYPE'] = 'MemcachedCache'
-app.config['CACHE_MEMCACHED_SERVERS'] = ['127.0.0.1:11211']
+app.config['CACHE_MEMCACHED_SERVERS'] = [env.str('MEMCACHE_PATH')]
 cache.init_app(app)
 
 
 def get_urls():
     with open('config/config.yaml', "r", encoding="utf-8") as config_file:
-        return yaml.safe_load(config_file).get('urls', {})
+        result:dict = yaml.safe_load(config_file).get('urls', {})
+    with env.prefixed("APIPROXY_"):
+        with env.prefixed("URL_"):
+            prefixes = [x.replace(env._prefix, "") for x in environ.keys() if x.startswith(env._prefix)]
+            for prefix in prefixes:
+                if prefix in result:
+                    result[prefix]['url'] = env.str(prefix, validate=validate.URL())
+                else:
+                    result[prefix] = {'url': env.str(prefix, validate=validate.URL())}
+        with env.prefixed("RATE_"):
+            prefixes = [x.replace(env._prefix, "") for x in environ.keys() if x.startswith(env._prefix)]
+            for prefix in prefixes:
+                if prefix in result:
+                    result[prefix]['rate_limit'] = env.int(prefix)
+                else:
+                    raise f"Unknown prefix: {prefix}"
+    return result
 
 
 @app.route('/<prefix>/<path:endpoint>', methods=['GET', 'POST'])
@@ -55,7 +75,7 @@ def proxy(prefix, endpoint):
                 data = request.get_data()
                 response = client.post(url, data=data)
             else:
-                return Response("Метод не поддерживается", status=405)
+                return Response(status=405)
             
             response.raise_for_status()
             content = response.read()
@@ -66,7 +86,8 @@ def proxy(prefix, endpoint):
         app.logger.debug(response.headers)
         return Response(content, status, response_headers)
     except Exception as e:
-        return Response(f"Ошибка при обращении к API: {e}", status=500)
+        return Response(f"Error accessing the API: {e}", status=500)
+
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='::', port=5000)

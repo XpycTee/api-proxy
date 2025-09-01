@@ -5,7 +5,7 @@ FROM python:3.13-alpine
 ENV PYTHONUNBUFFERED=1
 
 # Устанавливаем рабочую директорию
-WORKDIR /app
+WORKDIR /opt/proxy
 
 # Устанавливаем системные и Python зависимости
 COPY requirements.txt ./
@@ -19,8 +19,8 @@ RUN chmod +x ./entrypoint.sh
 
 # Указываем порты и монтируемые директории
 EXPOSE 8080
-VOLUME /app/config
-VOLUME /app/logs
+VOLUME /opt/proxy/config
+VOLUME /opt/proxy/logs
 
 # Используем entrypoint.sh для запуска
 ENTRYPOINT ["./entrypoint.sh"]
