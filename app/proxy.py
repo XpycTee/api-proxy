@@ -49,7 +49,7 @@ def proxy(prefix, endpoint):
         return Response("Unknown prefix", status=404)
     base_url = url_info['url']
     rate_limit = url_info.get('rate_limit')
-
+    app.logger.debug(f"Request to {base_url}/{endpoint}")
     if rate_limit:
         # Время между запросами в секундах
         query_delay_sec = 60.0 / rate_limit
@@ -61,7 +61,8 @@ def proxy(prefix, endpoint):
             elapsed = (now - last).total_seconds()
             wait = query_delay_sec - elapsed
             if wait > 0:
-                time.sleep(wait)
+                app.logger.debug(f"Rate limited {rate_limit} per minute for: {base_url}/{endpoint}")
+                return Response(f"Rate limited query {rate_limit} per minute", 429)
         cache.set(f'last_{prefix}', datetime.now(), timeout=query_delay_sec)
 
     url = f"{base_url}/{endpoint}"
